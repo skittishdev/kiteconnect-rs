@@ -14,8 +14,10 @@ use mockito;
 
 use std::collections::HashMap;
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
+use sha2::{
+    Digest,
+    Sha256
+};
 use csv::ReaderBuilder;
 
 use reqwest::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
@@ -108,16 +110,16 @@ impl KiteConnect {
     ) -> Result<JsonValue> {
         // Create a hex digest from api key, request token, api secret
         let mut sha = Sha256::new();
-        sha.input_str(
+        sha.update(
             format!("{}{}{}", self.api_key, request_token, api_secret).as_str()
         );
-        let checksum = sha.result_str();
+        let checksum = format!("{:x}", sha.finalize());
 
         let api_key: &str = &self.api_key.clone();
         let mut data = HashMap::new();
         data.insert("api_key", api_key);
         data.insert("request_token", request_token);
-        data.insert("checksum", checksum.as_str());
+        data.insert("checksum", &checksum);
 
         let url = self.build_url("/session/token", None);
 
@@ -149,16 +151,16 @@ impl KiteConnect {
     ) -> Result<JsonValue> {
         // Create a hex digest from api key, request token, api secret
         let mut sha = Sha256::new();
-        sha.input_str(
+        sha.update(
             format!("{}{}{}", self.api_key, access_token, api_secret).as_str()
         );
-        let checksum = sha.result_str();
+        let checksum = format!("{:x}", sha.finalize());
 
         let api_key: &str = &self.api_key.clone();
         let mut data = HashMap::new();
         data.insert("api_key", api_key);
         data.insert("access_token", access_token);
-        data.insert("checksum", checksum.as_str());
+        data.insert("checksum", &checksum);
 
         let url = self.build_url("/session/refresh_token", None);
 
