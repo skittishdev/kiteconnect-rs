@@ -220,7 +220,7 @@ impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
                     28 | 32 => {
                         let mut data: JsonValue  = json!({
                             "tradable": tradable,
-                            "mode": if packet_length == 28 {"quote"} else {"full"},
+                            "mode": if packet_length == 28 {"index_quote"} else {"index_full"},
                             "instrument_token": instrument_token,
                             "last_price": reader.read_i32::<BigEndian>().unwrap() as f64 / divisor,
                             "ohlc": {
