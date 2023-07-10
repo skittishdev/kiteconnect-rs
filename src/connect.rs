@@ -5,20 +5,17 @@
 //         unstable_features,
 //         unused_import_braces, unused_qualifications)]
 //
+use anyhow::{anyhow, Context, Result};
 use reqwest;
 use serde_json::{json, Value as JsonValue};
-use anyhow::{anyhow, Context, Result};
 
 #[cfg(test)]
 use mockito;
 
 use std::collections::HashMap;
 
-use sha2::{
-    Digest,
-    Sha256
-};
 use csv::ReaderBuilder;
+use sha2::{Digest, Sha256};
 
 use reqwest::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 
@@ -34,7 +31,7 @@ trait RequestHandler {
         &self,
         url: reqwest::Url,
         method: &str,
-        data: Option<HashMap<&str, &str>>
+        data: Option<HashMap<&str, &str>>,
     ) -> Result<reqwest::Response>;
 }
 
@@ -49,14 +46,12 @@ impl Default for KiteConnect {
         KiteConnect {
             api_key: "<API-KEY>".to_string(),
             access_token: "<ACCESS-TOKEN>".to_string(),
-            session_expiry_hook: None
+            session_expiry_hook: None,
         }
     }
 }
 
-
 impl KiteConnect {
-
     /// Constructs url for the given path and query params
     fn build_url(&self, path: &str, param: Option<Vec<(&str, &str)>>) -> reqwest::Url {
         let url: &str = &format!("{}/{}", URL, &path[1..]);
@@ -99,20 +94,17 @@ impl KiteConnect {
 
     /// Returns the login url
     pub fn login_url(&self) -> String {
-        format!("https://kite.trade/connect/login?api_key={}&v3", self.api_key)
+        format!(
+            "https://kite.trade/connect/login?api_key={}&v3",
+            self.api_key
+        )
     }
 
     /// Request for access token
-    pub fn generate_session(
-        &mut self,
-        request_token: &str,
-        api_secret: &str
-    ) -> Result<JsonValue> {
+    pub fn generate_session(&mut self, request_token: &str, api_secret: &str) -> Result<JsonValue> {
         // Create a hex digest from api key, request token, api secret
         let mut sha = Sha256::new();
-        sha.update(
-            format!("{}{}{}", self.api_key, request_token, api_secret).as_str()
-        );
+        sha.update(format!("{}{}{}", self.api_key, request_token, api_secret).as_str());
         let checksum = format!("{:x}", sha.finalize());
 
         let api_key: &str = &self.api_key.clone();
@@ -147,13 +139,11 @@ impl KiteConnect {
     pub fn renew_access_token(
         &mut self,
         access_token: &str,
-        api_secret: &str
+        api_secret: &str,
     ) -> Result<JsonValue> {
         // Create a hex digest from api key, request token, api secret
         let mut sha = Sha256::new();
-        sha.update(
-            format!("{}{}{}", self.api_key, access_token, api_secret).as_str()
-        );
+        sha.update(format!("{}{}{}", self.api_key, access_token, api_secret).as_str());
         let checksum = format!("{:x}", sha.finalize());
 
         let api_key: &str = &self.api_key.clone();
@@ -189,7 +179,10 @@ impl KiteConnect {
     pub fn margins(&self, segment: Option<String>) -> Result<JsonValue> {
         let url: reqwest::Url;
         if segment.is_some() {
-            url = self.build_url(format!("/user/margins/{}", segment.unwrap().as_str()).as_str(), None)
+            url = self.build_url(
+                format!("/user/margins/{}", segment.unwrap().as_str()).as_str(),
+                None,
+            )
         } else {
             url = self.build_url("/user/margins", None);
         }
@@ -247,16 +240,36 @@ impl KiteConnect {
         params.insert("transaction_type", transaction_type);
         params.insert("quantity", quantity);
         params.insert("variety", variety);
-        if price.is_some() { params.insert("price", price.unwrap()); }
-        if product.is_some() { params.insert("product", product.unwrap()); }
-        if order_type.is_some() { params.insert("order_type", order_type.unwrap()); }
-        if validity.is_some() { params.insert("validity", validity.unwrap()); }
-        if disclosed_quantity.is_some() { params.insert("disclosed_quantity", disclosed_quantity.unwrap()); }
-        if trigger_price.is_some() { params.insert("trigger_price", trigger_price.unwrap()); }
-        if squareoff.is_some() { params.insert("squareoff", squareoff.unwrap()); }
-        if stoploss.is_some() { params.insert("stoploss", stoploss.unwrap()); }
-        if trailing_stoploss.is_some() { params.insert("trailing_stoploss", trailing_stoploss.unwrap()); }
-        if tag.is_some() { params.insert("tag", tag.unwrap()); }
+        if price.is_some() {
+            params.insert("price", price.unwrap());
+        }
+        if product.is_some() {
+            params.insert("product", product.unwrap());
+        }
+        if order_type.is_some() {
+            params.insert("order_type", order_type.unwrap());
+        }
+        if validity.is_some() {
+            params.insert("validity", validity.unwrap());
+        }
+        if disclosed_quantity.is_some() {
+            params.insert("disclosed_quantity", disclosed_quantity.unwrap());
+        }
+        if trigger_price.is_some() {
+            params.insert("trigger_price", trigger_price.unwrap());
+        }
+        if squareoff.is_some() {
+            params.insert("squareoff", squareoff.unwrap());
+        }
+        if stoploss.is_some() {
+            params.insert("stoploss", stoploss.unwrap());
+        }
+        if trailing_stoploss.is_some() {
+            params.insert("trailing_stoploss", trailing_stoploss.unwrap());
+        }
+        if tag.is_some() {
+            params.insert("tag", tag.unwrap());
+        }
 
         let url = self.build_url(format!("/orders/{}", variety).as_str(), None);
 
@@ -284,17 +297,39 @@ impl KiteConnect {
         let mut params = HashMap::new();
         params.insert("order_id", order_id);
         params.insert("variety", variety);
-        if parent_order_id.is_some() { params.insert("parent_order_id", parent_order_id.unwrap()); }
-        if exchange.is_some() { params.insert("exchange", exchange.unwrap()); }
-        if tradingsymbol.is_some() { params.insert("tradingsymbol", tradingsymbol.unwrap()); }
-        if transaction_type.is_some() { params.insert("transaction_type", transaction_type.unwrap()); }
-        if quantity.is_some() { params.insert("quantity", quantity.unwrap()); }
-        if price.is_some() { params.insert("price", price.unwrap()); }
-        if order_type.is_some() { params.insert("order_type", order_type.unwrap()); }
-        if product.is_some() { params.insert("product", product.unwrap()); }
-        if trigger_price.is_some() { params.insert("trigger_price", trigger_price.unwrap()); }
-        if validity.is_some() { params.insert("validity", validity.unwrap()); }
-        if disclosed_quantity.is_some() { params.insert("disclosed_quantity", disclosed_quantity.unwrap()); }
+        if parent_order_id.is_some() {
+            params.insert("parent_order_id", parent_order_id.unwrap());
+        }
+        if exchange.is_some() {
+            params.insert("exchange", exchange.unwrap());
+        }
+        if tradingsymbol.is_some() {
+            params.insert("tradingsymbol", tradingsymbol.unwrap());
+        }
+        if transaction_type.is_some() {
+            params.insert("transaction_type", transaction_type.unwrap());
+        }
+        if quantity.is_some() {
+            params.insert("quantity", quantity.unwrap());
+        }
+        if price.is_some() {
+            params.insert("price", price.unwrap());
+        }
+        if order_type.is_some() {
+            params.insert("order_type", order_type.unwrap());
+        }
+        if product.is_some() {
+            params.insert("product", product.unwrap());
+        }
+        if trigger_price.is_some() {
+            params.insert("trigger_price", trigger_price.unwrap());
+        }
+        if validity.is_some() {
+            params.insert("validity", validity.unwrap());
+        }
+        if disclosed_quantity.is_some() {
+            params.insert("disclosed_quantity", disclosed_quantity.unwrap());
+        }
 
         let url = self.build_url(format!("/orders/{}/{}", variety, order_id).as_str(), None);
 
@@ -312,7 +347,9 @@ impl KiteConnect {
         let mut params = HashMap::new();
         params.insert("order_id", order_id);
         params.insert("variety", variety);
-        if parent_order_id.is_some() { params.insert("parent_order_id", parent_order_id.unwrap()); }
+        if parent_order_id.is_some() {
+            params.insert("parent_order_id", parent_order_id.unwrap());
+        }
         let url = self.build_url(format!("/orders/{}/{}", variety, order_id).as_str(), None);
 
         let mut resp = self.send_request(url, "DELETE", Some(params))?;
@@ -410,14 +447,20 @@ impl KiteConnect {
         transaction_type: &str,
         quantity: Option<&str>,
         amount: Option<&str>,
-        tag: Option<&str>
+        tag: Option<&str>,
     ) -> Result<JsonValue> {
         let mut params = HashMap::new();
         params.insert("tradingsymbol", tradingsymbol);
         params.insert("transaction_type", transaction_type);
-        if quantity.is_some() { params.insert("quantity", quantity.unwrap()); }
-        if amount.is_some() { params.insert("amount", amount.unwrap()); }
-        if tag.is_some() { params.insert("tag", tag.unwrap()); }
+        if quantity.is_some() {
+            params.insert("quantity", quantity.unwrap());
+        }
+        if amount.is_some() {
+            params.insert("amount", amount.unwrap());
+        }
+        if tag.is_some() {
+            params.insert("tag", tag.unwrap());
+        }
 
         let url = self.build_url("/mf/orders", None);
 
@@ -455,16 +498,22 @@ impl KiteConnect {
         frequency: &str,
         initial_amount: Option<&str>,
         instalment_day: Option<&str>,
-        tag: Option<&str>
+        tag: Option<&str>,
     ) -> Result<JsonValue> {
         let mut params = HashMap::new();
         params.insert("tradingsymbol", tradingsymbol);
         params.insert("amount", amount);
         params.insert("instalments", instalments);
         params.insert("frequency", frequency);
-        if initial_amount.is_some() { params.insert("initial_amount", initial_amount.unwrap()); }
-        if instalment_day.is_some() { params.insert("instalment_day", instalment_day.unwrap()); }
-        if tag.is_some() { params.insert("tag", tag.unwrap()); }
+        if initial_amount.is_some() {
+            params.insert("initial_amount", initial_amount.unwrap());
+        }
+        if instalment_day.is_some() {
+            params.insert("instalment_day", instalment_day.unwrap());
+        }
+        if tag.is_some() {
+            params.insert("tag", tag.unwrap());
+        }
 
         let url = self.build_url("/mf/sips", None);
 
@@ -488,7 +537,9 @@ impl KiteConnect {
         params.insert("status", status);
         params.insert("instalments", instalments);
         params.insert("frequency", frequency);
-        if instalment_day.is_some() { params.insert("instalment_day", instalment_day.unwrap()); }
+        if instalment_day.is_some() {
+            params.insert("instalment_day", instalment_day.unwrap());
+        }
 
         let url = self.build_url(format!("/mf/sips/{}", sip_id).as_str(), None);
 
@@ -639,9 +690,16 @@ impl KiteConnect {
         self._raise_or_return_json(&mut resp)
     }
 
-    pub fn trigger_range(&self, transaction_type: &str, instruments: Vec<&str>) -> Result<JsonValue> {
+    pub fn trigger_range(
+        &self,
+        transaction_type: &str,
+        instruments: Vec<&str>,
+    ) -> Result<JsonValue> {
         let params: Vec<_> = instruments.into_iter().map(|i| ("i", i)).collect();
-        let url = self.build_url(format!("/instruments/trigger_range/{}", transaction_type).as_str(), Some(params));
+        let url = self.build_url(
+            format!("/instruments/trigger_range/{}", transaction_type).as_str(),
+            Some(params),
+        );
 
         let mut resp = self.send_request(url, "GET", None)?;
         self._raise_or_return_json(&mut resp)
@@ -659,7 +717,12 @@ impl RequestHandler for KiteConnect {
     ) -> Result<reqwest::Response> {
         let mut headers = HeaderMap::new();
         headers.insert("XKiteVersion", "3".parse().unwrap());
-        headers.insert(AUTHORIZATION, format!("token {}:{}", self.api_key, self.access_token).parse().unwrap());
+        headers.insert(
+            AUTHORIZATION,
+            format!("token {}:{}", self.api_key, self.access_token)
+                .parse()
+                .unwrap(),
+        );
         headers.insert(USER_AGENT, "Rust".parse().unwrap());
 
         let client = reqwest::Client::new();
@@ -673,7 +736,6 @@ impl RequestHandler for KiteConnect {
         }
     }
 }
-
 
 // Mock tests
 
@@ -706,7 +768,9 @@ mod tests {
         let mut kiteconnect = KiteConnect::new("key", "token");
         assert_eq!(kiteconnect.session_expiry_hook, None);
 
-        fn mock_hook() { unimplemented!() }
+        fn mock_hook() {
+            unimplemented!()
+        }
 
         kiteconnect.set_session_expiry_hook(mock_hook);
         assert_ne!(kiteconnect.session_expiry_hook, None);
@@ -715,17 +779,26 @@ mod tests {
     #[test]
     fn test_login_url() {
         let kiteconnect = KiteConnect::new("key", "token");
-        assert_eq!(kiteconnect.login_url(), "https://kite.trade/connect/login?api_key=key&v3");
+        assert_eq!(
+            kiteconnect.login_url(),
+            "https://kite.trade/connect/login?api_key=key&v3"
+        );
     }
 
     #[test]
     fn test_margins() {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
-        let _mock1 = mockito::mock("GET", mockito::Matcher::Regex(r"^/user/margins".to_string()))
+        let _mock1 = mockito::mock(
+            "GET",
+            mockito::Matcher::Regex(r"^/user/margins".to_string()),
+        )
         .with_body_from_file("mocks/margins.json")
         .create();
-        let _mock1 = mockito::mock("GET", mockito::Matcher::Regex(r"^/user/margins/commodity".to_string()))
+        let _mock1 = mockito::mock(
+            "GET",
+            mockito::Matcher::Regex(r"^/user/margins/commodity".to_string()),
+        )
         .with_body_from_file("mocks/margins.json")
         .create();
 
@@ -741,7 +814,10 @@ mod tests {
     fn test_holdings() {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
-        let _mock = mockito::mock("GET", mockito::Matcher::Regex(r"^/portfolio/holdings".to_string()))
+        let _mock = mockito::mock(
+            "GET",
+            mockito::Matcher::Regex(r"^/portfolio/holdings".to_string()),
+        )
         .with_body_from_file("mocks/holdings.json")
         .create();
 
@@ -754,7 +830,10 @@ mod tests {
     fn test_positions() {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
-        let _mock = mockito::mock("GET", mockito::Matcher::Regex(r"^/portfolio/positions".to_string()))
+        let _mock = mockito::mock(
+            "GET",
+            mockito::Matcher::Regex(r"^/portfolio/positions".to_string()),
+        )
         .with_body_from_file("mocks/positions.json")
         .create();
 
@@ -768,7 +847,8 @@ mod tests {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
         let _mock2 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/orders/171229000724687/trades".to_string())
+            "GET",
+            mockito::Matcher::Regex(r"^/orders/171229000724687/trades".to_string()),
         )
         .with_body_from_file("mocks/order_trades.json")
         .create();
@@ -782,12 +862,10 @@ mod tests {
     fn test_orders() {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
-        let _mock2 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/orders".to_string())
-        )
-        .with_body_from_file("mocks/orders.json")
-        .with_status(200)
-        .create();
+        let _mock2 = mockito::mock("GET", mockito::Matcher::Regex(r"^/orders".to_string()))
+            .with_body_from_file("mocks/orders.json")
+            .with_status(200)
+            .create();
 
         let data: JsonValue = kiteconnect.orders().unwrap();
         println!("{:?}", data);
@@ -798,11 +876,9 @@ mod tests {
     fn test_order_history() {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
-        let _mock2 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/orders".to_string())
-        )
-        .with_body_from_file("mocks/order_info.json")
-        .create();
+        let _mock2 = mockito::mock("GET", mockito::Matcher::Regex(r"^/orders".to_string()))
+            .with_body_from_file("mocks/order_info.json")
+            .create();
 
         let data: JsonValue = kiteconnect.order_history("171229000724687").unwrap();
         println!("{:?}", data);
@@ -814,8 +890,8 @@ mod tests {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
         let _mock1 = mockito::mock("GET", mockito::Matcher::Regex(r"^/trades".to_string()))
-        .with_body_from_file("mocks/trades.json")
-        .create();
+            .with_body_from_file("mocks/trades.json")
+            .create();
 
         let data: JsonValue = kiteconnect.trades().unwrap();
         println!("{:?}", data);
@@ -826,17 +902,13 @@ mod tests {
     fn test_mf_orders() {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
-        let _mock1 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/mf/orders$".to_string())
-        )
-        .with_body_from_file("mocks/mf_orders.json")
-        .create();
+        let _mock1 = mockito::mock("GET", mockito::Matcher::Regex(r"^/mf/orders$".to_string()))
+            .with_body_from_file("mocks/mf_orders.json")
+            .create();
 
-        let _mock2 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/mf/orders".to_string())
-        )
-        .with_body_from_file("mocks/mf_orders_info.json")
-        .create();
+        let _mock2 = mockito::mock("GET", mockito::Matcher::Regex(r"^/mf/orders".to_string()))
+            .with_body_from_file("mocks/mf_orders_info.json")
+            .create();
 
         let data: JsonValue = kiteconnect.mf_orders(None).unwrap();
         println!("{:?}", data);
@@ -851,12 +923,15 @@ mod tests {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
         let _mock2 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/instruments/trigger_range".to_string())
+            "GET",
+            mockito::Matcher::Regex(r"^/instruments/trigger_range".to_string()),
         )
         .with_body_from_file("mocks/trigger_range.json")
         .create();
 
-        let data: JsonValue = kiteconnect.trigger_range("BUY", vec!["NSE:INFY", "NSE:RELIANCE"]).unwrap();
+        let data: JsonValue = kiteconnect
+            .trigger_range("BUY", vec!["NSE:INFY", "NSE:RELIANCE"])
+            .unwrap();
         println!("{:?}", data);
         assert!(data.is_object());
     }
@@ -865,11 +940,9 @@ mod tests {
     fn test_instruments() {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
-        let _mock2 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/instruments".to_string())
-        )
-        .with_body_from_file("mocks/instruments.csv")
-        .create();
+        let _mock2 = mockito::mock("GET", mockito::Matcher::Regex(r"^/instruments".to_string()))
+            .with_body_from_file("mocks/instruments.csv")
+            .create();
 
         let data: JsonValue = kiteconnect.instruments(None).unwrap();
         println!("{:?}", data);
@@ -881,7 +954,8 @@ mod tests {
         let kiteconnect = KiteConnect::new("API_KEY", "ACCESS_TOKEN");
 
         let _mock2 = mockito::mock(
-            "GET", mockito::Matcher::Regex(r"^/mf/instruments".to_string())
+            "GET",
+            mockito::Matcher::Regex(r"^/mf/instruments".to_string()),
         )
         .with_body_from_file("mocks/mf_instruments.csv")
         .create();

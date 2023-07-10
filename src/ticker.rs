@@ -5,61 +5,71 @@
 //         unstable_features,
 //         unused_import_braces, unused_qualifications)]
 //
-use std::thread;
+use byteorder::{BigEndian, ReadBytesExt};
+use log::debug;
+use serde_json::{json, Value as JsonValue};
+use std::collections::HashMap;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
-use log::debug;
-use ws::{
-    Handler, Handshake, Message, Sender, CloseCode, Result, Error,
-    Request, Factory, WebSocket
-};
-use byteorder::{BigEndian, ReadBytesExt};
+use std::thread;
 use url;
-use serde_json::{json, Value as JsonValue};
+use ws::{
+    CloseCode, Error, Factory, Handler, Handshake, Message, Request, Result, Sender, WebSocket,
+};
 
 /// KiteTickerHandler lets the user write the business logic inside
 /// the corresponding callbacks which are basically proxied from the
 /// Handler callbacks
 pub trait KiteTickerHandler {
-
     fn on_open<T>(&mut self, _ws: &mut WebSocketHandler<T>)
-    where T: KiteTickerHandler {
+    where
+        T: KiteTickerHandler,
+    {
         debug!("Connection opened");
     }
 
     fn on_ticks<T>(&mut self, _ws: &mut WebSocketHandler<T>, tick: Vec<JsonValue>)
-    where T: KiteTickerHandler {
+    where
+        T: KiteTickerHandler,
+    {
         debug!("{:?}", tick);
     }
 
     fn on_close<T>(&mut self, _ws: &mut WebSocketHandler<T>)
-    where T: KiteTickerHandler {
+    where
+        T: KiteTickerHandler,
+    {
         debug!("Connection closed");
     }
 
     fn on_error<T>(&mut self, _ws: &mut WebSocketHandler<T>)
-    where T: KiteTickerHandler {
+    where
+        T: KiteTickerHandler,
+    {
         debug!("Error");
     }
 }
 
-
-struct WebSocketFactory<T> where T: KiteTickerHandler {
-    handler: Arc<Mutex<Box<T>>>
+struct WebSocketFactory<T>
+where
+    T: KiteTickerHandler,
+{
+    handler: Arc<Mutex<Box<T>>>,
 }
-
 
 /// Implements Factory trait on KiteTickerFactory which essentialy
 /// sets the Handler type
-impl<T> Factory for WebSocketFactory<T> where T: KiteTickerHandler {
+impl<T> Factory for WebSocketFactory<T>
+where
+    T: KiteTickerHandler,
+{
     type Handler = WebSocketHandler<T>;
 
     fn connection_made(&mut self, ws: Sender) -> WebSocketHandler<T> {
         WebSocketHandler {
             ws: Some(ws),
             handler: self.handler.clone(),
-            subscribed_tokens: HashMap::new()
+            subscribed_tokens: HashMap::new(),
         }
     }
 
@@ -67,20 +77,24 @@ impl<T> Factory for WebSocketFactory<T> where T: KiteTickerHandler {
         WebSocketHandler {
             ws: Some(ws),
             handler: self.handler.clone(),
-            subscribed_tokens: HashMap::new()
+            subscribed_tokens: HashMap::new(),
         }
     }
 }
 
-
-pub struct WebSocketHandler<T> where T: KiteTickerHandler {
+pub struct WebSocketHandler<T>
+where
+    T: KiteTickerHandler,
+{
     handler: Arc<Mutex<Box<T>>>,
     ws: Option<Sender>,
-    subscribed_tokens: HashMap<u32, String>
+    subscribed_tokens: HashMap<u32, String>,
 }
 
-
-impl<T> WebSocketHandler<T> where T: KiteTickerHandler {
+impl<T> WebSocketHandler<T>
+where
+    T: KiteTickerHandler,
+{
     /// Subscribe to a list of instrument_tokens
     pub fn subscribe(&mut self, instrument_tokens: Vec<u32>) -> Result<()> {
         let data = json!({
@@ -96,10 +110,8 @@ impl<T> WebSocketHandler<T> where T: KiteTickerHandler {
             Some(ref s) => {
                 s.send(data.to_string())?;
                 Ok(())
-            },
-            None => {
-                Ok(debug!("Sender not bound to the instance"))
             }
+            None => Ok(debug!("Sender not bound to the instance")),
         }
     }
 
@@ -118,10 +130,8 @@ impl<T> WebSocketHandler<T> where T: KiteTickerHandler {
             Some(ref s) => {
                 s.send(data.to_string())?;
                 Ok(())
-            },
-            None => {
-                Ok(debug!("Sender not bound to the instance"))
             }
+            None => Ok(debug!("Sender not bound to the instance")),
         }
     }
 
@@ -130,7 +140,10 @@ impl<T> WebSocketHandler<T> where T: KiteTickerHandler {
         let mut modes: HashMap<String, Vec<u32>> = HashMap::new();
 
         for (token, mode) in self.subscribed_tokens.iter() {
-            modes.entry(mode.clone()).or_insert(vec![]).push(token.clone());
+            modes
+                .entry(mode.clone())
+                .or_insert(vec![])
+                .push(token.clone());
         }
 
         for (mode, tokens) in modes.iter() {
@@ -149,7 +162,10 @@ impl<T> WebSocketHandler<T> where T: KiteTickerHandler {
         });
 
         for token in &instrument_tokens {
-            *self.subscribed_tokens.entry(*token).or_insert("".to_string()) = mode.to_string();
+            *self
+                .subscribed_tokens
+                .entry(*token)
+                .or_insert("".to_string()) = mode.to_string();
         }
 
         match self.ws {
@@ -157,20 +173,21 @@ impl<T> WebSocketHandler<T> where T: KiteTickerHandler {
                 s.send(data.to_string())?;
                 Ok(())
             }
-            None => {
-                Ok(debug!("Sender not bound to the instance"))
-            }
+            None => Ok(debug!("Sender not bound to the instance")),
         }
     }
 }
 
 /// Implements the Handler trait on KiteTicker which provides all the
 /// callbacks methods ws-rs library
-impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
-
+impl<T> Handler for WebSocketHandler<T>
+where
+    T: KiteTickerHandler,
+{
     fn build_request(&mut self, url: &url::Url) -> Result<Request> {
         let mut req = Request::from_url(url)?;
-        req.headers_mut().push(("X-Kite-Version".into(), "3".into()));
+        req.headers_mut()
+            .push(("X-Kite-Version".into(), "3".into()));
         Ok(req)
     }
 
@@ -196,12 +213,14 @@ impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
                 let instrument_token = reader.read_i32::<BigEndian>().unwrap();
                 let segment = instrument_token & 0xFF;
                 let mut divisor: f64 = 100.0;
-                if segment == 3 {  // cds
+                if segment == 3 {
+                    // cds
                     divisor = 10000000.0;
                 }
 
                 let mut tradable = true;
-                if segment == 9 {  // indices
+                if segment == 9 {
+                    // indices
                     tradable = false;
                 }
 
@@ -214,11 +233,11 @@ impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
                             "instrument_token": instrument_token,
                             "last_price": reader.read_i32::<BigEndian>().unwrap() as f64 / divisor,
                         }));
-                    },
+                    }
 
                     // Index quote/full
                     28 | 32 => {
-                        let mut data: JsonValue  = json!({
+                        let mut data: JsonValue = json!({
                             "tradable": tradable,
                             "mode": if packet_length == 28 {"index_quote"} else {"index_full"},
                             "instrument_token": instrument_token,
@@ -235,15 +254,18 @@ impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
                         if data["ohlc"]["close"] != 0 {
                             let last_price: f64 = data["last_price"].as_f64().unwrap();
                             let ohlc_close: f64 = data["ohlc"]["close"].as_f64().unwrap();
-                            data["change"] = json!((last_price - ohlc_close) * 100 as f64 / ohlc_close);
+                            data["change"] =
+                                json!((last_price - ohlc_close) * 100 as f64 / ohlc_close);
                         }
 
-                        if packet_length == 32 {  // timestamp incase of full
-                            data["timestamp"] = json!(reader.read_i32::<BigEndian>().unwrap() as f64 / divisor);
+                        if packet_length == 32 {
+                            // timestamp incase of full
+                            data["timestamp"] =
+                                json!(reader.read_i32::<BigEndian>().unwrap() as f64 / divisor);
                         }
 
                         tick_data.push(data);
-                    },
+                    }
 
                     // Quote/Full
                     44 | 184 => {
@@ -268,15 +290,20 @@ impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
                         if data["ohlc"]["close"] != 0 {
                             let last_price: f64 = data["last_price"].as_f64().unwrap();
                             let ohlc_close: f64 = data["ohlc"]["close"].as_f64().unwrap();
-                            data["change"] = json!((last_price - ohlc_close) * 100 as f64 / ohlc_close);
+                            data["change"] =
+                                json!((last_price - ohlc_close) * 100 as f64 / ohlc_close);
                         }
 
                         if packet_length == 184 {
-                            data["last_trade_time"] = json!(reader.read_i32::<BigEndian>().unwrap() as f64);
+                            data["last_trade_time"] =
+                                json!(reader.read_i32::<BigEndian>().unwrap() as f64);
                             data["oi"] = json!(reader.read_i32::<BigEndian>().unwrap() as f64);
-                            data["oi_day_high"] = json!(reader.read_i32::<BigEndian>().unwrap() as f64);
-                            data["oi_day_low"] = json!(reader.read_i32::<BigEndian>().unwrap() as f64);
-                            data["timestamp"] = json!(reader.read_i32::<BigEndian>().unwrap() as f64);
+                            data["oi_day_high"] =
+                                json!(reader.read_i32::<BigEndian>().unwrap() as f64);
+                            data["oi_day_low"] =
+                                json!(reader.read_i32::<BigEndian>().unwrap() as f64);
+                            data["timestamp"] =
+                                json!(reader.read_i32::<BigEndian>().unwrap() as f64);
 
                             // XXX We have already read 64 bytes now, Remaining 184-64/12 = 10
                             let mut buy_depth_data: Vec<JsonValue> = Vec::with_capacity(5);
@@ -310,9 +337,9 @@ impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
                 }
 
                 // Place reader in the position after the packet length
-                reader.seek(SeekFrom::Start(j+2+packet_length as u64))?;
+                reader.seek(SeekFrom::Start(j + 2 + packet_length as u64))?;
 
-                j = j+2+packet_length as u64;
+                j = j + 2 + packet_length as u64;
             }
 
             let cloned_handler = self.handler.clone();
@@ -336,9 +363,7 @@ impl<T> Handler for WebSocketHandler<T> where T: KiteTickerHandler {
         cloned_handler.lock().unwrap().on_error(self);
         debug!("Error {:?}", err);
     }
-
 }
-
 
 pub struct KiteTicker {
     sender: Option<Sender>,
@@ -346,10 +371,8 @@ pub struct KiteTicker {
     access_token: String,
 }
 
-
 /// Implments the apis exposed from KiteTicker struct
 impl KiteTicker {
-
     /// Constructor
     pub fn new(api_key: &str, access_token: &str) -> KiteTicker {
         KiteTicker {
@@ -362,9 +385,11 @@ impl KiteTicker {
     /// Creates a websocket and delegates to it to child thread. Also sets the
     /// broadcaster so that other methods can easily send message on this socket
     pub fn connect<F>(&mut self, handler: F, uri: Option<&str>) -> Result<()>
-        where F: KiteTickerHandler + Send + 'static {
+    where
+        F: KiteTickerHandler + Send + 'static,
+    {
         let factory = WebSocketFactory {
-            handler: Arc::new(Mutex::new(Box::new(handler)))
+            handler: Arc::new(Mutex::new(Box::new(handler))),
         };
         let mut ws = WebSocket::new(factory).unwrap();
         let sender = ws.broadcaster();
@@ -372,7 +397,7 @@ impl KiteTicker {
             "wss://{}?api_key={}&access_token={}",
             match uri {
                 Some(uri) => uri,
-                None => "ws.kite.trade"
+                None => "ws.kite.trade",
             },
             self.api_key,
             self.access_token
@@ -386,7 +411,6 @@ impl KiteTicker {
 
         Ok(())
     }
-
 }
 
 #[cfg(test)]
@@ -409,16 +433,12 @@ mod tests {
 
     #[test]
     fn test_kite_ticker() {
-        thread::spawn(move || {
-            listen("127.0.0.1:3012", |out| {
-                Server { out: out }
-            }).unwrap()
-        });
+        thread::spawn(move || listen("127.0.0.1:3012", |out| Server { out: out }).unwrap());
 
         struct MyHandler;
         impl KiteTickerHandler for MyHandler {}
         let mut kiteticker = KiteTicker::new("<API-KEY>", "<ACCESS-TOKEN>");
-        kiteticker.connect(MyHandler{}, Some("127.0.0.1:3012"));
+        kiteticker.connect(MyHandler {}, Some("127.0.0.1:3012"));
         kiteticker.sender.unwrap().send("PING");
     }
 }
