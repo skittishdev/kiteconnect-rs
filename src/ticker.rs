@@ -103,7 +103,7 @@ where
         });
 
         for token in &instrument_tokens {
-            self.subscribed_tokens.insert(*token, "quote".to_string());
+            self.subscribed_tokens.insert(*token, "full".to_string());
         }
 
         match self.ws {
