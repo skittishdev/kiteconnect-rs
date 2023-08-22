@@ -3,7 +3,7 @@ extern crate serde_json as json;
 extern crate ws;
 
 use kiteconnect::ticker::{KiteTicker, KiteTickerHandler, WebSocketHandler};
-use ws::Message;
+
 
 #[derive(Debug)]
 struct CustomHandler {
@@ -21,7 +21,7 @@ impl KiteTickerHandler for CustomHandler {
         println!("Fellow on_open callback");
     }
 
-    fn on_ticks<T>(&mut self, ws: &mut WebSocketHandler<T>, tick: Vec<json::Value>)
+    fn on_ticks<T>(&mut self, _ws: &mut WebSocketHandler<T>, tick: Vec<json::Value>)
     where
         T: KiteTickerHandler,
     {
@@ -29,14 +29,14 @@ impl KiteTickerHandler for CustomHandler {
         println!("Fellow on_ticks callback");
     }
 
-    fn on_close<T>(&mut self, ws: &mut WebSocketHandler<T>)
+    fn on_close<T>(&mut self, _ws: &mut WebSocketHandler<T>)
     where
         T: KiteTickerHandler,
     {
         println!("Fellow on_close callback");
     }
 
-    fn on_error<T>(&mut self, ws: &mut WebSocketHandler<T>)
+    fn on_error<T>(&mut self, _ws: &mut WebSocketHandler<T>)
     where
         T: KiteTickerHandler,
     {

@@ -20,10 +20,10 @@ use sha2::{Digest, Sha256};
 use reqwest::header::{HeaderMap, AUTHORIZATION, USER_AGENT};
 
 #[cfg(not(test))]
-const URL: &'static str = "https://api.kite.trade";
+const URL: &str = "https://api.kite.trade";
 
 #[cfg(test)]
-const URL: &'static str = mockito::SERVER_URL;
+const URL: &str = mockito::SERVER_URL;
 
 #[allow(unused_variables)]
 trait RequestHandler {

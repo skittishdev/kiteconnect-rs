@@ -143,7 +143,7 @@ where
             modes
                 .entry(mode.clone())
                 .or_insert(vec![])
-                .push(token.clone());
+                .push(*token);
         }
 
         for (mode, tokens) in modes.iter() {
@@ -200,7 +200,7 @@ where
 
     fn on_message(&mut self, msg: Message) -> Result<()> {
         if msg.is_binary() && msg.len() > 2 {
-            let mut reader = Cursor::new(msg.clone().into_data());
+            let mut reader = Cursor::new(msg.into_data());
             let number_of_packets = reader.read_i16::<BigEndian>().unwrap();
 
             let mut tick_data: Vec<JsonValue> = Vec::new();
@@ -255,7 +255,7 @@ where
                             let last_price: f64 = data["last_price"].as_f64().unwrap();
                             let ohlc_close: f64 = data["ohlc"]["close"].as_f64().unwrap();
                             data["change"] =
-                                json!((last_price - ohlc_close) * 100 as f64 / ohlc_close);
+                                json!((last_price - ohlc_close) * 100_f64 / ohlc_close);
                         }
 
                         if packet_length == 32 {
@@ -291,7 +291,7 @@ where
                             let last_price: f64 = data["last_price"].as_f64().unwrap();
                             let ohlc_close: f64 = data["ohlc"]["close"].as_f64().unwrap();
                             data["change"] =
-                                json!((last_price - ohlc_close) * 100 as f64 / ohlc_close);
+                                json!((last_price - ohlc_close) * 100_f64 / ohlc_close);
                         }
 
                         if packet_length == 184 {
@@ -395,16 +395,13 @@ impl KiteTicker {
         let sender = ws.broadcaster();
         let socket_url = format!(
             "wss://{}?api_key={}&access_token={}",
-            match uri {
-                Some(uri) => uri,
-                None => "ws.kite.trade",
-            },
+            uri.unwrap_or("ws.kite.trade"),
             self.api_key,
             self.access_token
         );
         let url = url::Url::parse(socket_url.as_str()).unwrap();
 
-        ws.connect(url.clone()).unwrap();
+        ws.connect(url).unwrap();
         thread::spawn(|| ws.run().unwrap());
 
         self.sender = Some(sender);
@@ -433,7 +430,7 @@ mod tests {
 
     #[test]
     fn test_kite_ticker() {
-        thread::spawn(move || listen("127.0.0.1:3012", |out| Server { out: out }).unwrap());
+        thread::spawn(move || listen("127.0.0.1:3012", |out| Server { out }).unwrap());
 
         struct MyHandler;
         impl KiteTickerHandler for MyHandler {}
