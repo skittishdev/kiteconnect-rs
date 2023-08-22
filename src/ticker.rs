@@ -140,10 +140,7 @@ where
         let mut modes: HashMap<String, Vec<u32>> = HashMap::new();
 
         for (token, mode) in self.subscribed_tokens.iter() {
-            modes
-                .entry(mode.clone())
-                .or_insert(vec![])
-                .push(*token);
+            modes.entry(mode.clone()).or_insert(vec![]).push(*token);
         }
 
         for (mode, tokens) in modes.iter() {

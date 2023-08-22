@@ -4,7 +4,6 @@ extern crate ws;
 
 use kiteconnect::ticker::{KiteTicker, KiteTickerHandler, WebSocketHandler};
 
-
 #[derive(Debug)]
 struct CustomHandler {
     count: u32,
