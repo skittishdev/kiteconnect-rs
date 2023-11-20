@@ -680,7 +680,7 @@ impl KiteConnect {
         params.insert("to", to_date);
         params.insert("interval", interval);
         params.insert("continuos", continuos);
-        let params = params.into_iter().map(|(k, v)| (k, v)).collect();
+        let params = params.into_iter().collect();
         let url = self.build_url(
             format!("/instruments/historical/{}/{}", instrument_token, interval).as_str(),
             Some(params),
