@@ -362,6 +362,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct KiteTicker {
     sender: Option<Sender>,
     api_key: String,
